@@ -1,0 +1,16 @@
+temperature:
+    - 0.3
+    - 0.35
+    - 0.4
+    - 0.45
+    - 0.5
+    - 0.6
+    - 0.8
+    - 1.0
+    - 1.5
+    - 1.6
+pressure:
+    - 1.
+mom_inertia:
+    - 1.
+outdir: '../tmp1m/2017-11-08-dynamics'

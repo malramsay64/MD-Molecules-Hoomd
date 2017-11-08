@@ -16,6 +16,8 @@ import subprocess
 from pathlib import Path
 from typing import List
 
+import yaml
+
 
 pbs_header = """#!/usr/bin/env python
 #PBS -N {name}
@@ -49,6 +51,7 @@ temperature, pressure, moment_inertia, crystal = all_values[job_index]
 temperature = '{{:.2f}}'.format(temperature)
 pressure = '{{:.2f}}'.format(pressure)
 moment_inertia = '{{:.2f}}'.format(moment_inertia)
+crystal = str(crystal)
 
 ncpus = {ncpus}
 
@@ -144,18 +147,20 @@ def get_array_flag(num_values: int) -> str:
     else:
         return f'#PBS -J 0-{num_values-1}'
 
-temperatures = [0.3, 0.35, 0.4, 0.45, 0.5, 0.6, 0.8, 1.0, 1.5, 1.8]
-pressures = [1.]
-mom_inertia = [1.]
-crystals: List[str] = [None]
-
-outdir = Path.home() / 'tmp1m/2017-10-27-dynamics'
 
 if __name__ == "__main__":
+    with open('experiment.yml', 'r') as infile:
+        values = yaml.load(infile.read())
+    temperatures = values.get('temperature')
+    pressures = values.get('pressure')
+    mom_inertia = values.get('mom_inertia')
+    crystals = values.get('crystal', [None])
+    outdir = Path.cwd() / values.get('outdir')
+
     # ensure outdir exists
     outdir.mkdir(exist_ok=True)
 
-    create_temp = 1.80
+    create_temp = 1.60
     create_values = list(itertools.product([create_temp], pressures, mom_inertia, crystals))
     create_pbs = create_liquid.format(
         name='dynamics-create',
@@ -167,7 +172,7 @@ if __name__ == "__main__":
     )
     create_process = subprocess.run(
         ['qsub'],
-        input=create_pbs,
+        input=create_pbs.encode(),
         stdout=subprocess.PIPE,
         env=os.environ,
     )
@@ -188,8 +193,8 @@ if __name__ == "__main__":
         ncpus=8,
     )
     equil_process = subprocess.run(
-        ['qsub', '-W', 'depend=afterok:'+create_process.stdout],
-        input=equil_pbs,
+        ['qsub', '-W', 'depend=afterok:'+create_process.stdout.decode()],
+        input=equil_pbs.encode(),
         stdout=subprocess.PIPE,
         env=os.environ,
     )
@@ -208,8 +213,8 @@ if __name__ == "__main__":
         ncpus=8,
     )
     prod_process = subprocess.run(
-        ['qsub', '-W', 'depend=afterok:'+create_process.stdout],
-        input=prod_pbs,
+        ['qsub', '-W', 'depend=afterok:'+create_process.stdout.decode()],
+        input=prod_pbs.encode(),
         stdout=subprocess.PIPE,
         env=os.environ,
     )
