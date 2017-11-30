@@ -19,9 +19,10 @@ from hypothesis.strategies import floats, integers, tuples
 
 from statdyn import crystals, molecules
 from statdyn.simulation import initialise
-from statdyn.simulation.helper import SimulationParams
+from statdyn.simulation.params import SimulationParams, paramsContext
 
 from .crystal_test import get_distance
+from .molecule_test import MOLECULE_LIST
 
 
 def create_snapshot():
@@ -176,3 +177,9 @@ def test_moment_inertia(scaling_factor):
     nmols = max(snapshot.particles.body) + 1
     assert np.allclose(snapshot.particles.moment_inertia[:nmols],
                        np.array(init_mol.moment_inertia).astype(np.float32))
+
+
+@pytest.mark.parametrize('mol', MOLECULE_LIST)
+def test_disperse(mol):
+    with paramsContext(PARAMETERS, crystal=None, molecule=mol) as sim_params:
+        initialise.init_from_disperse(sim_params)

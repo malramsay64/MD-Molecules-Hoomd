@@ -56,6 +56,34 @@ def init_from_none(hoomd_args: str='',
         return sys.take_snapshot(all=True)
 
 
+def init_from_disperse(sim_params: SimulationParams
+                       ) -> hoomd.data.system_data:
+    """Initialise a disordered state from a disperse lattice."""
+    temp_context = hoomd.context.initialize(sim_params.hoomd_args)
+    with temp_context:
+        sys = hoomd.init.create_lattice(
+            unitcell=hoomd.lattice.sq(a=sim_params.molecule.compute_size()),
+            n=sim_params.cell_dimensions
+        )
+        logger.debug("Creating cell of size %s", sim_params.cell_dimensions)
+
+        md.integrate.mode_standard(dt=sim_params.step_size)
+        pressure_gradient = hoomd.variant.linear_interp([
+            (0, 0.1),
+            (sim_params.num_steps, sim_params.pressure)
+        ])
+        md.integrate.npt(group=sim_params.group,
+                         kT=sim_params.temperature,
+                         P=pressure_gradient,
+                         tau=sim_params.tau,
+                         tauP=sim_params.tauP,
+                         )
+
+        equil_snap = sys.take_snapshot(all=True)
+    return equil_snap
+
+
+
 def initialise_snapshot(snapshot: hoomd.data.SnapshotParticleData,
                         context: hoomd.context.SimulationContext,
                         molecule: molecules.Molecule,
