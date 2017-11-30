@@ -13,4 +13,11 @@ pressure:
     - 1.
 mom_inertia:
     - 1.
-outdir: '../tmp1m/2017-11-08-dynamics'
+molecule:
+    - '--molecule'
+    - 'trimer'
+    - '--radius'
+    - '1.0'
+    - '--distance'
+    - '2.0'
+outdir: '../tmp1m/2017-11-30-dynamics'

@@ -14,7 +14,6 @@ import itertools
 import os
 import subprocess
 from pathlib import Path
-from typing import List
 
 import yaml
 
@@ -51,7 +50,8 @@ temperature, pressure, moment_inertia, crystal = all_values[job_index]
 temperature = '{{:.2f}}'.format(temperature)
 pressure = '{{:.2f}}'.format(pressure)
 moment_inertia = '{{:.2f}}'.format(moment_inertia)
-crystal = str(crystal)
+if crystal:
+    crystal = str(crystal)
 
 ncpus = {ncpus}
 
@@ -64,7 +64,7 @@ common_opts = [
     '--space-group', crystal,
     '--output', str(outdir),
     '--steps', '{steps}',
-]
+] + {mol_opts}
 
 run_comand = ['sdrun']
 if ncpus > 1:
@@ -80,7 +80,6 @@ create_liquid = pbs_header + """
 create_out = outdir / create_fname('Trimer', temperature, pressure, moment_inertia)
 
 create_opts = [
-    '--space-group', 'pg',
     '--lattice-lengths', '25', '25',
     create_out,
 ]
@@ -156,6 +155,8 @@ if __name__ == "__main__":
     mom_inertia = values.get('mom_inertia')
     crystals = values.get('crystal', [None])
     outdir = Path.cwd() / values.get('outdir')
+    mol_opts = values.get('molecule', [])
+    ncpus = 12
 
     # ensure outdir exists
     outdir.mkdir(exist_ok=True)
@@ -168,7 +169,8 @@ if __name__ == "__main__":
         array_flag=get_array_flag(len(create_values)),
         outdir=outdir,
         steps=100_000,
-        ncpus=8,
+        ncpus=ncpus,
+        mol_opts=mol_opts,
     )
     create_process = subprocess.run(
         ['qsub'],
@@ -190,7 +192,8 @@ if __name__ == "__main__":
         array_flag=get_array_flag(len(all_values)),
         outdir=outdir,
         steps=10_000_000,
-        ncpus=8,
+        ncpus=ncpus,
+        mol_opts=mol_opts,
     )
     equil_process = subprocess.run(
         ['qsub', '-W', 'depend=afterok:'+create_process.stdout.decode()],
@@ -210,7 +213,8 @@ if __name__ == "__main__":
         array_flag=get_array_flag(len(all_values)),
         outdir=outdir,
         steps=100_000_000,
-        ncpus=8,
+        ncpus=ncpus,
+        mol_opts=mol_opts,
     )
     prod_process = subprocess.run(
         ['qsub', '-W', 'depend=afterok:'+create_process.stdout.decode()],

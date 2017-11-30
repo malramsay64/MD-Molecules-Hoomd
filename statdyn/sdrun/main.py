@@ -95,7 +95,11 @@ def create(sim_params: SimulationParams) -> None:
     # Ensure parent directory exists
     Path(sim_params.outfile).parent.mkdir(exist_ok=True)
 
-    snapshot = initialise.init_from_crystal(sim_params=sim_params)
+    if getattr(sim_params, 'crystal', None):
+        snapshot = initialise.init_from_crystal(sim_params)
+    else:
+        snapshot = initialise.init_from_disperse(sim_params)
+
 
     equilibrate.equil_crystal(
         snapshot=snapshot,
@@ -162,6 +166,11 @@ def create_parser() -> argparse.ArgumentParser:
         help='Distance at which small particles are situated',
     )
     parse_molecule.add_argument(
+        '--radius',
+        type=float,
+        help='Radius of the small particles',
+    )
+    parse_molecule.add_argument(
         '--moment-inertia-scale',
         type=float,
         help='Scaling factor for the moment of inertia.',
@@ -170,7 +179,7 @@ def create_parser() -> argparse.ArgumentParser:
     parse_crystal = parser.add_argument_group('crystal')
     parse_crystal.add_argument(
         '--space-group',
-        choices=CRYSTAL_FUNCS.keys(),
+        choices=list(CRYSTAL_FUNCS.keys()) + ['None'],
         help='Space group of initial crystal.',
     )
     parse_crystal.add_argument(
@@ -287,7 +296,7 @@ def parse_args(input_args: List[str]=None
     if my_mol is None:
         my_mol = Trimer
     mol_kwargs = {}
-    for attr in ['distance', 'moment_inertia_scale']:
+    for attr in ['distance', 'moment_inertia_scale', 'mol_radius']:
         if getattr(args, attr, None) is not None:
             mol_kwargs[attr] = getattr(args, attr)
 
@@ -295,7 +304,11 @@ def parse_args(input_args: List[str]=None
 
     # Parse space groups
     if func == create:
-        args.crystal = CRYSTAL_FUNCS[args.space_group]()
+        print(args.space_group)
+        if args.space_group in CRYSTAL_FUNCS:
+            args.crystal = CRYSTAL_FUNCS[args.space_group]()
+        else:
+            args.crystal = None
 
     set_args = {key: val for key, val in vars(args).items() if val is not None}
     return func, SimulationParams(**set_args)
